@@ -1,0 +1,44 @@
+Metadata-Version: 2.1
+Name: onisubscriptions
+Version: 0.0.1
+Summary: Aplicativo para gestão de assinaturas dentro de aplicativos Django.
+Home-page: https://www.onimusic.com.br/
+Author: Isaque Fernando et al.
+Author-email: isaque.fernando@onimusic.com.br
+Maintainer: Isaque Fernando et al.
+Maintainer-email: isaque.fernando@onimusic.com.br
+License: MIT
+Keywords: django,subscriptions,payments
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Django
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+License-File: LICENSE
+
+================
+OniSubscriptions
+================
+
+OniSubscriptions é um aplicativo criado para realizar a gestão de assinaturas de um App Django.
+
+Quick Start
+===========
+
+1. Adicione o app "subscription" no seu INSTALED_APPS no settings.py do seu projeto.
+
+    INSTALED_APPS = (
+        ...
+        'subscription',
+        ...
+    )
+
+2. Adicione a url do app no urls.py do seu projeto.
+
+    path('subscriptions/', include('subscription.urls', namespace='subscription')),
+
+3. Rode o comando `python manage.py migrate` para criar as tabelas no banco de dados.

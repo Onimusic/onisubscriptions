@@ -1,0 +1,5 @@
+venv/
+˜/.nvm
+
+# pycache files
+__pycache__/
