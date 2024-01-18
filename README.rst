@@ -4,6 +4,18 @@ OniSubscriptions
 
 OniSubscriptions é um aplicativo criado para realizar a gestão de assinaturas de um App Django.
 
+Dependências
+============
+
+* Python (>= 3.6)
+* Django (>= 3.2.23)
+* Onipkg Contrib (>= 1.2b)
+
+Certifique-se de que o Onipkg Contrib esteja instalado no seu projeto.
+
+    pip install git+https://github.com/Onimusic/onipkg_contrib.git@v1.2b
+
+
 Quick Start
 ===========
 
@@ -20,3 +32,32 @@ Quick Start
     path('subscriptions/', include('subscription.urls', namespace='subscription')),
 
 3. Rode o comando `python manage.py migrate` para criar as tabelas no banco de dados.
+
+
+Para Desenvolvedores
+====================
+
+O pacote pode ser extendido e testado da seguinte forma:
+
+1. Clone o repositório do projeto.
+
+    git clone
+
+2. Crie um ambiente virtual e instale as dependências.
+
+    python -m venv venv
+    pip install -r requirements.txt
+
+3. Modifique o código.
+
+4. Altere a versão do pacote no arquivo `setup.py`.
+
+5. Faça o build do pacote.
+
+    python setup.py sdist bdist_wheel
+
+6. Instale o pacote no seu projeto.
+    
+    pip install dist/onipkg_contrib_subscription-<versão>.tar.gz
+
+7. Teste o pacote.

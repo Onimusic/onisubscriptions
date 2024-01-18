@@ -3,11 +3,6 @@ MANIFEST.in
 README.rst
 setup.cfg
 setup.py
-onisubscriptions/__init__.py
-onisubscriptions/asgi.py
-onisubscriptions/settings.py
-onisubscriptions/urls.py
-onisubscriptions/wsgi.py
 onisubscriptions.egg-info/PKG-INFO
 onisubscriptions.egg-info/SOURCES.txt
 onisubscriptions.egg-info/dependency_links.txt
@@ -19,3 +14,7 @@ subscription/models.py
 subscription/tests.py
 subscription/views.py
 subscription/migrations/__init__.py
+subscription/utils/__init__.py
+subscription/utils/api_helpers.py
+subscription/utils/subscriptions.json
+subscription/utils/utils.py
