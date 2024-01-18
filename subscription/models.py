@@ -52,7 +52,7 @@ class AbstractCustomUser(AbstractUser):
         SPANISH = 'ES', t('Espanhol')
 
     class Meta:
-        abstact = True
+        abstract = True
         ordering = ['email', 'id']
         verbose_name = t('Usuário')
         verbose_name_plural = t('Usuários')

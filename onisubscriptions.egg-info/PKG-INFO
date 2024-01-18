@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: onisubscriptions
-Version: 0.0.2
+Version: 0.0.1
 Summary: Aplicativo para gestão de assinaturas dentro de aplicativos Django.
 Home-page: https://www.onimusic.com.br/
 Author: Isaque Fernando et al.
