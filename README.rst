@@ -27,11 +27,16 @@ Quick Start
         ...
     )
 
-2. Adicione a url do app no urls.py do seu projeto.
+2. Faça a implementação das classes Abstratas criando os relacionamentos.
 
-    path('subscriptions/', include('subscription.urls', namespace='subscription')),
+    class CustomUser(AbstractCustomUser):
+        ...
 
-3. Rode o comando `python manage.py migrate` para criar as tabelas no banco de dados.
+3. Adicione a classe CustomUser no settings.py do seu projeto.
+
+    AUTH_USER_MODEL = 'subscription.CustomUser'
+
+4. Rode o comando `python manage.py makemigrations` para criar as migrações.
 
 
 Para Desenvolvedores
