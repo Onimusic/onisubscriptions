@@ -12,9 +12,11 @@ subscription/admin.py
 subscription/apps.py
 subscription/models.py
 subscription/tests.py
+subscription/urls.py
 subscription/views.py
 subscription/migrations/__init__.py
 subscription/utils/__init__.py
 subscription/utils/api_helpers.py
+subscription/utils/base_viewsets.py
 subscription/utils/subscriptions.json
 subscription/utils/utils.py

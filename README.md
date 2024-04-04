@@ -10,7 +10,9 @@ onde <version> é o nome da release que deseja instalar.
 
 Adicione a linha `'subscription',` no array `INSTALLED_APPS` do arquivo `settings/base.py` do seu projeto.
 
-Execute o comando `python manage.py migrate` para criar as tabelas necessárias.
+Adicione a linha `AUTH_USER_MODEL = 'subscription.SystemUser'` também ao arquivo `settings/base.py` do seu projeto.
+
+Execute o comando `python manage.py makemigrations` para criar as tabelas necessárias.
 
 Com o migrate, você terá criado as tabelas de usuário (SystemUser), perfil (UserProfile), cliente (Customer) e assinatura (PaidContent).
 
