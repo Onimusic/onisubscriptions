@@ -23,18 +23,24 @@ path('auth/', include('subscription.urls', namespace='subscription')),
 
 Para configurar o envio de emails, adicione o trecho a seguir nas suas configurações do ansible de acordo com o seu provedor de email:
 ```python
-DEFAULT_FROM_EMAIL = 'postmaster@sandbox80775ca84f734d1298805a8c1c27c481.mailgun.org'
+DEFAULT_FROM_EMAIL = '[email do remetente aqui]'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.mailgun.org'
 EMAIL_PORT = '465'
-EMAIL_HOST_USER = 'postmaster@sandbox80775ca84f734d1298805a8c1c27c481.mailgun.org'
-EMAIL_HOST_PASSWORD = '8ad2c1b4d1201ef0068d1e3f426f542c-6d1c649a-ba602d02'
+EMAIL_HOST_USER = '[user do host aqui]'
+EMAIL_HOST_PASSWORD = '[senha do host aqui]'
 EMAIL_USE_SSL = True
 ```
 
 Se a sua aplicação for permitir que um cliente tenha mais de um usuário, adicione o trecho a seguir nas suas configurações:
 `DJANGO_REST_MULTITOKENAUTH_REQUIRE_USABLE_PASSWORD = False`
 Isso vai permitir que noos usuários sejam convidados pelo administrador do cliente.
+
+### Escrevendo o JSON
+Siga as instruções abaixo para escrever o JSON de planos da forma correta:
+- Para o tempo de duração do produto, coloque a validade em número de dias. Se não tiver data de vencimento (compra de 
+créditos por exemplo), coloque a string 'inf'.
+- 
 
 ### Cadastro de usuários
 O cadastro de usuários é feito em duas etapas separadas: a criação do usuário e a criação do cliente/perfil.
@@ -226,5 +232,5 @@ e também as permissões de leitura, escrita e deleção do perfil, com base na 
 ### Para gerar os arquivos de distribuíção execute o comando abaixo:
     
 ```bash
-python setup.py sdist bdist_wheel
+python3 -m build
 ```

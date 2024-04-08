@@ -2,6 +2,7 @@ from typing import Optional, List
 
 from django.db import models
 from django.db.models import QuerySet
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as t
 from django.contrib.auth.models import AbstractUser, Permission
 from django.contrib.auth.base_user import BaseUserManager
@@ -153,6 +154,28 @@ class Customer(BaseModel):
         """
         return self.quota - amount
 
+    def get_active_signature(self) -> 'PaidContent':
+        """
+        Retorna a assinatura ativa do cliente
+        """
+        active_signatures = self.paidcontent_set.filter(type=PaidContent.Types.SIGNATURE,
+                                                        expiration_date__gte=timezone.localtime(timezone.now()))
+        if len(active_signatures) > 1:
+            if active_signatures.filter(is_exclusive=True).count() > 1:
+                raise Exception('Cliente possui mais de uma assinatura exclusiva ativa')
+        elif len(active_signatures) == 0:
+            raise Exception('Cliente não possui assinatura ativa')
+        return active_signatures[0]
+
+    @property
+    def available_features(self) -> list[str]:
+        """
+        Retorna a lista de funcionalidades disponíveis para o cliente, com base nas features listadas no json, sob
+        o stripe_id que representa a assinatura do cliente
+        """
+        return [content.get('id') for content in self.get_active_signature().get_data().get('purchased_content', []) if
+                content.get('type') == 'feature']
+
 
 class PaidContent(BaseModel):
     """Modelo conteúdo pago. Pode ser uma assinatura mensal, anual ou uma compra pontual.
@@ -165,18 +188,19 @@ class PaidContent(BaseModel):
     """
 
     class Types(models.TextChoices):
-        MONTHLY = 'MO', t('Mensal')
-        YEARLY = 'YE', t('Anual')
+        SIGNATURE = 'SIG', t('Assinatura')
         ONE_TIME_ONLY = 'OT', t('Compra Pontual')
 
+    customer = models.ForeignKey(to=Customer, on_delete=models.CASCADE, verbose_name=t('Cliente'))
     # tipo do plano
-    type = models.CharField(verbose_name=t('Tipo'), max_length=2, null=True, blank=True)
+    type = models.CharField(verbose_name=t('Tipo da compra'), max_length=3, null=True, blank=True)
+    is_exclusive = models.BooleanField(verbose_name=t('É uma assinatura exclusiva?'), default=False)
     # data de expiração
-    expiration_date = models.DateTimeField(verbose_name=t('Data de Expiração'), null=True, blank=True)
+    expiration_date = models.DateTimeField(verbose_name=t('Vencimento'), null=True, blank=True)
     # inicio da vigencia da assinatura
-    start_date = models.DateTimeField(verbose_name=t('Data de Início'), null=True, blank=True)
+    start_date = models.DateTimeField(verbose_name=t('Data de Vigor'), null=True, blank=True)
     # valor da assinatura
-    value = models.DecimalField(verbose_name=t('Valor'), max_digits=10, decimal_places=2, null=True, blank=True)
+    value = models.DecimalField(verbose_name=t('Valor pago'), max_digits=10, decimal_places=2, null=True, blank=True)
     # id do conteúdo no Stripe
     stripe_id = models.CharField(verbose_name=t('ID Stripe'), max_length=255)
 
@@ -187,18 +211,34 @@ class PaidContent(BaseModel):
     def __str__(self):
         return self.stripe_id
 
-    def set_subscription(self) -> None:
-        """Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+    @staticmethod
+    def get_products() -> dict:
+        """
+        Carrega os produtos pagáveis do arquivo json e retorna em formato de dicionário
         """
         import json
-        from datetime import timedelta
         from django.conf import settings
-        from django.utils import timezone
-
         # carrega o arquivo de planos
         with open(settings.BASE_DIR / 'subscription/plans.json', 'r') as f:
             plans = json.load(f)
+        return plans
 
+    def get_data(self) -> dict:
+        """
+        Pega os dados do produto pagável, compilando informações do json e do bd
+        """
+        plans = self.get_products()
+        plan = plans[self.stripe_id]  # acesso direto proposital p dar keyerror se não existir. se vira aí pra tratar <3
+        plan['expiration_date'] = self.expiration_date
+        plan['start_date'] = self.start_date
+        return plan
+
+    def set_subscription(self) -> None:
+        """Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+        """
+        from datetime import timedelta
+
+        plans = self.get_products()
         # pega o plano do cliente
         plan = plans.get(self.stripe_id)
 
@@ -210,10 +250,14 @@ class PaidContent(BaseModel):
         self.value = plan.get('value')
 
         # pega a data de inicio da assinatura
-        self.start_date = timezone.now()
+        self.start_date = timezone.localtime(timezone.now())
 
         # pega a data de expiração da assinatura
-        self.expiration_date = self.start_date + timedelta(days=plan.get('duration'))
+        expiration_time = plan.get('expiration_time')
+        if expiration_time == 'inf':
+            self.expiration_date = None
+        else:
+            self.expiration_date = self.start_date + timedelta(days=expiration_time)
 
         # salva a assinatura
         self.save()
@@ -224,10 +268,9 @@ class PaidContent(BaseModel):
         Returns:
             bool: True se a assinatura expirou, False caso contrário.
         """
-        from django.utils import timezone
 
         # se a data de expiração for menor que a data atual, retorna True
-        if self.expiration_date < timezone.now():
+        if self.expiration_date < timezone.localtime(timezone.now()):
             return True
 
         # se não, retorna False
@@ -236,11 +279,14 @@ class PaidContent(BaseModel):
 
 class UserProfile(BaseModel):
     """ Modelo Many-to-many que liga um usuário a um cliente """
-    user = models.OneToOneField(to=SystemUser, on_delete=models.CASCADE, verbose_name=t('Usuário'), related_name='profile')
+    user = models.OneToOneField(to=SystemUser, on_delete=models.CASCADE, verbose_name=t('Usuário'),
+                                related_name='profile')
     client = models.ForeignKey(to=Customer, on_delete=models.CASCADE, verbose_name=t('Cliente'), null=True, blank=True)
     allowed_actions = models.CharField(verbose_name=t('Funcionalidades Acessíveis'),
                                        choices=AllowedActions.choices, default=AllowedActions.ADMINISTRATOR,
                                        max_length=3)
+    available_features = models.CharField(verbose_name=t('Funcionalidades Disponíveis'), max_length=255, null=True,
+                                          blank=True)
 
     class Meta:
         verbose_name = t('Perfil de Usuário')
@@ -281,7 +327,9 @@ class UserProfile(BaseModel):
     def get_available_features(self) -> List[str]:
         """ Retorna a lista de códigos das funcionalidades disponíveis pro usuário com base no cliente dele
         """
-        return []
+        # Faz uma interseção pra garantir que o perfil não acesse funcionalidades que o cliente não tem acesso
+        return [] if not self.available_features or not self.client else list(
+            set(self.client.available_features).intersection(set(self.available_features.split(','))))
 
     def can_access_feature(self, feature: str) -> bool:
         """ Verifica se o usuário tem acesso a uma determinada funcionalidade
