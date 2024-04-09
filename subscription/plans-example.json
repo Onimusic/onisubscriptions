@@ -1,18 +1,15 @@
 {
   "<signature_stripe_id>": {
     "type": "signature",
-    "expiration_time": "365",
     "signature_exclusive": true,
     "purchased_content": [
       {
         "type": "feature",
-        "id": "CORE",
-        "amount": "inf"
+        "id": "CORE"
       },
       {
         "type": "feature",
-        "id": "ACADEMY",
-        "amount": "inf"
+        "id": "ACADEMY"
       },
       {
         "type": "quota",
