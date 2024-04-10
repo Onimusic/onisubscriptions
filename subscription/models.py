@@ -270,11 +270,7 @@ class PaidContent(BaseModel):
         """
 
         # se a data de expiração for menor que a data atual, retorna True
-        if self.expiration_date < timezone.localtime(timezone.now()):
-            return True
-
-        # se não, retorna False
-        return False
+        return self.expiration_date < timezone.localtime(timezone.now())
 
 
 class UserProfile(BaseModel):
