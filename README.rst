@@ -10,6 +10,9 @@ Dependências
 * Python (>= 3.6)
 * Django (>= 3.2.23)
 * Onipkg Contrib (>= 1.2b)
+* Django Rest Framework (>= 3.14)
+* Django Rest Framework Simple JWT (>= 5.2.2)
+* Django Rest Password Reset (>= 1.3.0)
 
 Certifique-se de que o Onipkg Contrib esteja instalado no seu projeto.
 
@@ -42,7 +45,7 @@ Quick Start
 Para Desenvolvedores
 ====================
 
-O pacote pode ser extendido e testado da seguinte forma:
+O pacote pode ser estendido e testado da seguinte forma:
 
 1. Clone o repositório do projeto.
 
@@ -55,14 +58,14 @@ O pacote pode ser extendido e testado da seguinte forma:
 
 3. Modifique o código.
 
-4. Altere a versão do pacote no arquivo `setup.py`.
+4. Altere a versão do pacote no arquivo `setup.cfg`.
 
 5. Faça o build do pacote.
 
     python setup.py sdist bdist_wheel
 
 6. Instale o pacote no seu projeto.
-    
+
     pip install dist/onipkg_contrib_subscription-<versão>.tar.gz
 
 7. Teste o pacote.

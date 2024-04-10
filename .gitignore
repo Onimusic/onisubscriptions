@@ -1,5 +1,6 @@
 venv/
 ˜/.nvm
+.idea/
 
 # pycache files
 __pycache__/

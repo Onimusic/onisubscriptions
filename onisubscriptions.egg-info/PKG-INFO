@@ -1,14 +1,14 @@
 Metadata-Version: 2.1
 Name: onisubscriptions
-Version: 0.0.1
-Summary: Aplicativo para gestão de assinaturas dentro de aplicativos Django.
+Version: 1.1.0
+Summary: Aplicativo para gestão de usuários e assinaturas dentro de aplicativos Django.
 Home-page: https://www.onimusic.com.br/
 Author: Isaque Fernando et al.
 Author-email: isaque.fernando@onimusic.com.br
 Maintainer: Isaque Fernando et al.
 Maintainer-email: isaque.fernando@onimusic.com.br
 License: MIT
-Keywords: django,subscriptions,payments
+Keywords: django,authentication,users,subscriptions,payments
 Classifier: Environment :: Web Environment
 Classifier: Framework :: Django
 Classifier: Intended Audience :: Developers
@@ -32,6 +32,9 @@ Dependências
 * Python (>= 3.6)
 * Django (>= 3.2.23)
 * Onipkg Contrib (>= 1.2b)
+* Django Rest Framework (>= 3.14)
+* Django Rest Framework Simple JWT (>= 5.2.2)
+* Django Rest Password Reset (>= 1.3.0)
 
 Certifique-se de que o Onipkg Contrib esteja instalado no seu projeto.
 
@@ -49,17 +52,22 @@ Quick Start
         ...
     )
 
-2. Adicione a url do app no urls.py do seu projeto.
+2. Faça a implementação das classes Abstratas criando os relacionamentos.
 
-    path('subscriptions/', include('subscription.urls', namespace='subscription')),
+    class CustomUser(AbstractCustomUser):
+        ...
 
-3. Rode o comando `python manage.py migrate` para criar as tabelas no banco de dados.
+3. Adicione a classe CustomUser no settings.py do seu projeto.
+
+    AUTH_USER_MODEL = 'subscription.CustomUser'
+
+4. Rode o comando `python manage.py makemigrations` para criar as migrações.
 
 
 Para Desenvolvedores
 ====================
 
-O pacote pode ser extendido e testado da seguinte forma:
+O pacote pode ser estendido e testado da seguinte forma:
 
 1. Clone o repositório do projeto.
 
@@ -72,14 +80,14 @@ O pacote pode ser extendido e testado da seguinte forma:
 
 3. Modifique o código.
 
-4. Altere a versão do pacote no arquivo `setup.py`.
+4. Altere a versão do pacote no arquivo `setup.cfg`.
 
 5. Faça o build do pacote.
 
     python setup.py sdist bdist_wheel
 
 6. Instale o pacote no seu projeto.
-    
+
     pip install dist/onipkg_contrib_subscription-<versão>.tar.gz
 
 7. Teste o pacote.

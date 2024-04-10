@@ -1,7 +1,8 @@
-from typing import Optional
+from typing import Optional, List
 
 from django.db import models
 from django.db.models import QuerySet
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as t
 from django.contrib.auth.models import AbstractUser, Permission
 from django.contrib.auth.base_user import BaseUserManager
@@ -9,6 +10,35 @@ from django.contrib.auth.base_user import BaseUserManager
 from onipkg_contrib.log_helper import log_error
 from onipkg_contrib.models.base_model import BaseModel
 from subscription.utils.utils import BasePermissionClass
+
+
+class AllowedActions(models.TextChoices):
+    ADMINISTRATOR = 'ADM', t(
+        'Administrador. Pode ver, criar, alterar e apagar tudo.')
+    EDITOR = 'EDT', t(
+        'Editor. Pode ver, criar e alterar tudo, mas sem apagar.')
+    VIEWER = 'VIE', t(
+        'Visualizador. Pode ver tudo, mas sem criar, alterar ou apagar.')
+
+    @classmethod
+    def get_delete_permissions(cls) -> List[str]:
+        """ Retorna o(s) código(s) de role que pode realizar ações do tipo DELETE """
+        return [cls.ADMINISTRATOR]
+
+    @classmethod
+    def get_update_permissions(cls) -> List[str]:
+        """ Retorna o(s) código(s) de role que pode realizar ações do tipo UPDATE """
+        return [cls.ADMINISTRATOR, cls.EDITOR]
+
+    @classmethod
+    def get_create_permissions(cls) -> List[str]:
+        """ Retorna o(s) código(s) de role que pode realizar ações do tipo CREATE """
+        return [cls.ADMINISTRATOR, cls.EDITOR]
+
+    @classmethod
+    def get_read_permissions(cls) -> List[str]:
+        """ Retorna o(s) código(s) de role que pode realizar ações do tipo READ """
+        return [cls.ADMINISTRATOR, cls.EDITOR, cls.VIEWER]
 
 
 class CustomUserManager(BaseUserManager):
@@ -29,7 +59,7 @@ class CustomUserManager(BaseUserManager):
         return user
 
 
-class AbstractCustomUser(AbstractUser):
+class SystemUser(AbstractUser):
     """Classe que representa o usuário personalizado.
 
     Attributes
@@ -46,25 +76,19 @@ class AbstractCustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    class SystemLanguages(models.TextChoices):
-        PORTUGUESE = 'PT', t('Português')
-        ENGLISH = 'EN', t('Inglês')
-        SPANISH = 'ES', t('Espanhol')
-
     class Meta:
-        abstract = True
         ordering = ['email', 'id']
         verbose_name = t('Usuário')
         verbose_name_plural = t('Usuários')
 
     # métodos da classe - Quer herdar precisa implementar esse método
     @staticmethod
-    def new_user(data: dict) -> Optional['AbstractCustomUser']:
-        """ Cria e retorna uma instancia de AbstractCustomUser com base no email e senha passados em data
+    def new_user(data: dict) -> Optional['SystemUser']:
+        """ Cria e retorna uma instancia de SystemUser com base no email e senha passados em data
         """
         try:
-            user = AbstractCustomUser(email=data.get('email'), first_name=data.get('first_name'),
-                              last_name=data.get('last_name'), firebase_uid=data.get('firebase_uid'))
+            user = SystemUser(email=data.get('email'), first_name=data.get('first_name'),
+                              last_name=data.get('last_name'))
             user.set_password(data.get('password'))
             user.save()
             return user
@@ -74,22 +98,87 @@ class AbstractCustomUser(AbstractUser):
             return None
 
 
-class AbstractClient(BaseModel):
-    """Classe abstrata que representa o cliente.
+class Customer(BaseModel):
+    """Classe que representa o cliente do sistema. Possui um dono e pode possuir outros usuários atrelados. Possui um
+    ou mais conteúdos pagos (no mínimo possui um conteúdo pago que é a assinatura free).
 
     Attributes:
         name (models.CharField): Nome do cliente.
     """
     name = models.CharField(verbose_name=t('Nome'), max_length=255, null=True, blank=True)
+    owner = models.OneToOneField(to=SystemUser, on_delete=models.PROTECT, verbose_name=t('Dono'))
 
     class Meta:
-        abstract = True
         verbose_name = t('Cliente')
         verbose_name_plural = t('Clientes')
 
+    @staticmethod
+    def new_customer(data: dict) -> Optional['Customer']:
+        """ Cria e retorna uma instancia de Manager com base nos dados passados
+        """
+        try:
+            manager = Customer(**data)
+            manager.save()
+            return manager
+        except Exception as e:
+            log_error(e)
 
-class AbstractSubscription(BaseModel):
-    """Modelo abstrato de assinatura.
+    @property
+    def quota(self) -> int:
+        """
+        Indica a quantidade de créditos que esse Manager tem
+        Returns:
+            Número inteiro representando a quandidade de créditos
+        """
+        return 100000
+
+    def has_quota(self, amount) -> bool:
+        """
+        Verifica se o Manager tem os créditos desejados
+        Args:
+            amount: quantia desejada
+
+        Returns:
+            True se a quantidade desejada é menor que a quantidade de créditos que o Manager possui
+        """
+        return amount <= self.quota
+
+    def use_quota(self, amount) -> None:
+        """
+        Gasta uma determinada quantia em créditos desse Manager
+        Args:
+            amount: quantia gasta
+
+        Returns:
+            None
+        """
+        return self.quota - amount
+
+    def get_active_signature(self) -> 'PaidContent':
+        """
+        Retorna a assinatura ativa do cliente
+        """
+        active_signatures = self.paidcontent_set.filter(type=PaidContent.Types.SIGNATURE,
+                                                        expiration_date__gte=timezone.localtime(timezone.now()))
+        if len(active_signatures) > 1:
+            if active_signatures.filter(is_exclusive=True).count() > 1:
+                raise Exception('Cliente possui mais de uma assinatura exclusiva ativa')
+        elif len(active_signatures) == 0:
+            raise Exception('Cliente não possui assinatura ativa')
+        return active_signatures[0]
+
+    @property
+    def available_features(self) -> list[str]:
+        """
+        Retorna a lista de funcionalidades disponíveis para o cliente, com base nas features listadas no json, sob
+        o stripe_id que representa a assinatura do cliente
+        """
+        return [content.get('id') for content in self.get_active_signature().get_data().get('purchased_content', []) if
+                content.get('type') == 'feature']
+
+
+class PaidContent(BaseModel):
+    """Modelo conteúdo pago. Pode ser uma assinatura mensal, anual ou uma compra pontual.
 
     Attributes:
         type (models.CharField): Tipo da assinatura.
@@ -97,41 +186,61 @@ class AbstractSubscription(BaseModel):
         start_date (models.DateTimeField): Data de início da assinatura.
         value (models.DecimalField): Valor da assinatura.
     """
-    class Types(models.TextChoices):
-        MONTHLY = 'MO', t('Mensal')
-        YEARLY = 'YE', t('Anual')
 
+    class Types(models.TextChoices):
+        SIGNATURE = 'SIG', t('Assinatura')
+        ONE_TIME_ONLY = 'OT', t('Compra Pontual')
+
+    customer = models.ForeignKey(to=Customer, on_delete=models.CASCADE, verbose_name=t('Cliente'))
     # tipo do plano
-    type = models.CharField(verbose_name=t('Tipo'), max_length=2, null=True, blank=True)
+    type = models.CharField(verbose_name=t('Tipo da compra'), max_length=3, null=True, blank=True)
+    is_exclusive = models.BooleanField(verbose_name=t('É uma assinatura exclusiva?'), default=False)
     # data de expiração
-    expiration_date = models.DateTimeField(verbose_name=t('Data de Expiração'), null=True, blank=True)
+    expiration_date = models.DateTimeField(verbose_name=t('Vencimento'), null=True, blank=True)
     # inicio da vigencia da assinatura
-    start_date = models.DateTimeField(verbose_name=t('Data de Início'), null=True, blank=True)
+    start_date = models.DateTimeField(verbose_name=t('Data de Vigor'), null=True, blank=True)
     # valor da assinatura
-    value = models.DecimalField(verbose_name=t('Valor'), max_digits=10, decimal_places=2, null=True, blank=True)
+    value = models.DecimalField(verbose_name=t('Valor pago'), max_digits=10, decimal_places=2, null=True, blank=True)
+    # id do conteúdo no Stripe
+    stripe_id = models.CharField(verbose_name=t('ID Stripe'), max_length=255)
 
     class Meta:
-        abstract = True
-        verbose_name = t('Assinatura')
-        verbose_name_plural = t('Assinaturas')
+        verbose_name = t('Conteúdo Pago')
+        verbose_name_plural = t('Conteúdos Pagos')
 
     def __str__(self):
-        return f'{self.client} - {self.type} - {self.value}' if self.id else ''
-    
-    def set_subscription(self) -> None:
-        """Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+        return self.stripe_id
+
+    @staticmethod
+    def get_products() -> dict:
+        """
+        Carrega os produtos pagáveis do arquivo json e retorna em formato de dicionário
         """
         import json
-        from datetime import timedelta
         from django.conf import settings
-        from django.utils import timezone
-
         # carrega o arquivo de planos
         with open(settings.BASE_DIR / 'subscription/plans.json', 'r') as f:
             plans = json.load(f)
+        return plans
 
+    def get_data(self) -> dict:
+        """
+        Pega os dados do produto pagável, compilando informações do json e do bd
+        """
+        plans = self.get_products()
+        plan = plans[self.stripe_id]  # acesso direto proposital p dar keyerror se não existir. se vira aí pra tratar <3
+        plan['expiration_date'] = self.expiration_date
+        plan['start_date'] = self.start_date
+        return plan
+
+    def set_subscription(self) -> None:
+        """Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+        """
+        from datetime import timedelta
+
+        plans = self.get_products()
         # pega o plano do cliente
-        plan = plans.get(self.client.type)
+        plan = plans.get(self.stripe_id)
 
         # se o plano não existir, retorna
         if not plan:
@@ -141,10 +250,14 @@ class AbstractSubscription(BaseModel):
         self.value = plan.get('value')
 
         # pega a data de inicio da assinatura
-        self.start_date = timezone.now()
+        self.start_date = timezone.localtime(timezone.now())
 
         # pega a data de expiração da assinatura
-        self.expiration_date = self.start_date + timedelta(days=plan.get('duration'))
+        expiration_time = plan.get('expiration_time')
+        if expiration_time == 'inf':
+            self.expiration_date = None
+        else:
+            self.expiration_date = self.start_date + timedelta(days=expiration_time)
 
         # salva a assinatura
         self.save()
@@ -155,34 +268,91 @@ class AbstractSubscription(BaseModel):
         Returns:
             bool: True se a assinatura expirou, False caso contrário.
         """
-        from django.utils import timezone
 
         # se a data de expiração for menor que a data atual, retorna True
-        if self.expiration_date < timezone.now():
-            return True
+        return self.expiration_date < timezone.localtime(timezone.now())
 
-        # se não, retorna False
-        return False
-        
 
-class CustomGroup(BaseModel, BasePermissionClass):
-    """
-    Modelo de Grupo customizado para ser ligado a um Cliente, e o Cliente poder gerenciar seus grupos de permissão.
-    Teremos alguns grupos pré-definidos que serão atribuídos ao Cliente quando ele for criado/assinar algum plano.
-    Nessa classe não será feito override do método get_queryset para que a filtragem por manager seja feita pelo DRF.
-    """
-    name = models.CharField(t('Nome'), max_length=150, unique=True)
-    permissions = models.ManyToManyField(
-        Permission,
-        verbose_name=t('Permissões'),
-        blank=True,
-    )
-    # manager = models.ForeignKey(to=Manager, on_delete=models.PROTECT, verbose_name=t('Cliente'))
+class UserProfile(BaseModel):
+    """ Modelo Many-to-many que liga um usuário a um cliente """
+    user = models.OneToOneField(to=SystemUser, on_delete=models.CASCADE, verbose_name=t('Usuário'),
+                                related_name='profile')
+    client = models.ForeignKey(to=Customer, on_delete=models.CASCADE, verbose_name=t('Cliente'), null=True, blank=True)
+    allowed_actions = models.CharField(verbose_name=t('Funcionalidades Acessíveis'),
+                                       choices=AllowedActions.choices, default=AllowedActions.ADMINISTRATOR,
+                                       max_length=3)
+    available_features = models.CharField(verbose_name=t('Funcionalidades Disponíveis'), max_length=255, null=True,
+                                          blank=True)
 
     class Meta:
-        verbose_name = t('Grupo de Permissões')
-        verbose_name_plural = t('Grupos de Permissões')
-        ordering = ('name',)
+        verbose_name = t('Perfil de Usuário')
+        verbose_name_plural = t('Perfis de Usuários')
+        unique_together = ['user', 'client']
 
     def __str__(self):
-        return self.name
+        return f'{self.user.email} ({self.client.name})'
+
+    @staticmethod
+    def new_profile(data: dict) -> Optional["UserProfile"]:
+        """
+        Cria e retorna uma instância de perfil com base nos dados passados
+        """
+        try:
+            profile = UserProfile(**data)
+            profile.save()
+            return profile
+        except Exception as e:
+            log_error(e)
+
+    def can_read(self) -> bool:
+        """ Indica se a instância de usuário tem permissão para READ """
+        return self.allowed_actions in AllowedActions.get_read_permissions()
+
+    def can_delete(self) -> bool:
+        """ Indica se a instância de usuário tem permissão para DELETE """
+        return self.allowed_actions in AllowedActions.get_delete_permissions()
+
+    def can_update(self) -> bool:
+        """ Indica se a instância de usuário tem permissão para UPDATE """
+        return self.allowed_actions in AllowedActions.get_update_permissions()
+
+    def can_create(self) -> bool:
+        """ Indica se a instância de usuário tem permissão para CREATE """
+        return self.allowed_actions in AllowedActions.get_create_permissions()
+
+    def get_available_features(self) -> List[str]:
+        """ Retorna a lista de códigos das funcionalidades disponíveis pro usuário com base no cliente dele
+        """
+        # Faz uma interseção pra garantir que o perfil não acesse funcionalidades que o cliente não tem acesso
+        return [] if not self.available_features or not self.client else list(
+            set(self.client.available_features).intersection(set(self.available_features.split(','))))
+
+    def can_access_feature(self, feature: str) -> bool:
+        """ Verifica se o usuário tem acesso a uma determinada funcionalidade
+        """
+        return feature in self.get_available_features()
+
+    def has_credits(self, price) -> bool:
+        """
+        Verifica se o usuário pode gastar uma determinada quantia de créditos do Manager dele
+        Args:
+            price: quantidade de créditos necessária
+
+        Returns:
+            True se o usuário puder gastar os créditos desejados
+        """
+        return False if not self.client else self.client.has_quota(price)
+
+    def spend_credits(self, price) -> None:
+        """
+        Gasta créditos do usuário (pela RN, quem tem crédito é o Manager, então é um Profile que gasta os créditos de
+        um Manager)
+        Args:
+            price: quantidade de créditos gasta
+
+        Returns:
+            None
+        """
+        if not self.client:
+            return
+        self.client.use_quota(price)

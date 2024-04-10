@@ -1,0 +1,43 @@
+{
+  "<signature_stripe_id>": {
+    "type": "signature",
+    "signature_exclusive": true,
+    "purchased_content": [
+      {
+        "type": "feature",
+        "id": "CORE"
+      },
+      {
+        "type": "feature",
+        "id": "ACADEMY"
+      },
+      {
+        "type": "quota",
+        "id": "ARTISTS",
+        "amount": 1
+      },
+      {
+        "type": "quota",
+        "id": "ONESHEET",
+        "amount": 1
+      },
+      {
+        "type": "quota",
+        "id": "META-ADS",
+        "amount": 1
+      }
+    ]
+  },
+  "<content_stripe_id>": {
+    "type": "content",
+    "expiration_time": "inf",
+    "signature_exclusive": false,
+    "purchased_content": [
+      {
+        "type": "quota",
+        "id": "ONESHEET",
+        "amount": 5
+      }
+    ]
+  }
+}
