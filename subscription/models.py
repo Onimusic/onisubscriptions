@@ -169,7 +169,7 @@ class Customer(BaseModel):
         return active_signatures[0]
 
     @property
-    def available_features(self) -> list[str]:
+    def available_features(self) -> List[str]:
         """
         Retorna a lista de funcionalidades disponíveis para o cliente, com base nas features listadas no json, sob
         o stripe_id que representa a assinatura do cliente
