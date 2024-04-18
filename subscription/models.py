@@ -164,7 +164,8 @@ class Customer(BaseModel):
             if active_signatures.filter(is_exclusive=True).count() > 1:
                 raise Exception('Cliente possui mais de uma assinatura exclusiva ativa')
         elif len(active_signatures) == 0:
-            raise Exception('Cliente não possui assinatura ativa')
+            # Se o cara nao tiver uma assinatura ativa, coloca ele no plano free automaticamente
+            PaidContent.register_purchase('free', self)
         return active_signatures[0]
 
     @property
@@ -233,34 +234,36 @@ class PaidContent(BaseModel):
         plan['start_date'] = self.start_date
         return plan
 
-    def set_subscription(self) -> None:
-        """Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+    @classmethod
+    def register_purchase(cls, stripe_id: str, customer: 'Customer') -> None:
+        """ Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
+
+        Args:
+            stripe_id: id do plano no stripe
+            customer: objeto customer que realizou a assinatura
         """
         from datetime import timedelta
 
-        plans = self.get_products()
+        plans = cls.get_products()
         # pega o plano do cliente
-        plan = plans.get(self.stripe_id)
+        plan = plans[stripe_id]
 
-        # se o plano não existir, retorna
-        if not plan:
-            return
-
+        purchase = cls(customer=customer, stripe_id=stripe_id)
         # pega o valor da assinatura
-        self.value = plan.get('value')
+        purchase.value = plan['value']
 
         # pega a data de inicio da assinatura
-        self.start_date = timezone.localtime(timezone.now())
+        purchase.start_date = timezone.localtime(timezone.now())
 
-        # pega a data de expiração da assinatura
-        expiration_time = plan.get('expiration_time')
-        if expiration_time == 'inf':
-            self.expiration_date = None
-        else:
-            self.expiration_date = self.start_date + timedelta(days=expiration_time)
+        # calcula a data de vencimento da assinatura
+        if expiration_time := plan.get('expiration_time'):
+            purchase.expiration_date = purchase.start_date + timedelta(days=expiration_time)
+
+        purchase.type = plan['type']
+        purchase.is_exclusive = plan['signature_exclusive']
 
         # salva a assinatura
-        self.save()
+        purchase.save()
 
     def has_expired(self) -> bool:
         """Verifica se a assinatura expirou.
@@ -269,8 +272,12 @@ class PaidContent(BaseModel):
             bool: True se a assinatura expirou, False caso contrário.
         """
 
-        # se a data de expiração for menor que a data atual, retorna True
-        return self.expiration_date < timezone.localtime(timezone.now())
+        # se a data de expiração for menor que a data atual, retorna que venceu
+        if self.expiration_date and self.expiration_date < timezone.localtime(timezone.now()):
+            return True
+
+        # se não, retorna q nao venceu
+        return False
 
 
 class UserProfile(BaseModel):

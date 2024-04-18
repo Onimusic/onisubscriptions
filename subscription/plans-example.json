@@ -1,7 +1,8 @@
 {
-  "<signature_stripe_id>": {
-    "type": "signature",
+  "free":  {
+    "type": "SIG",
     "signature_exclusive": true,
+    "value": 0.0,
     "purchased_content": [
       {
         "type": "feature",
@@ -28,9 +29,38 @@
       }
     ]
   },
+  "<signature_stripe_id>": {
+    "type": "SIG",
+    "signature_exclusive": true,
+    "value": 99.99,
+    "purchased_content": [
+      {
+        "type": "feature",
+        "id": "CORE"
+      },
+      {
+        "type": "feature",
+        "id": "ACADEMY"
+      },
+      {
+        "type": "quota",
+        "id": "ARTISTS",
+        "amount": 3
+      },
+      {
+        "type": "quota",
+        "id": "ONESHEET",
+        "amount": 5
+      },
+      {
+        "type": "quota",
+        "id": "META-ADS",
+        "amount": 2
+      }
+    ]
+  },
   "<content_stripe_id>": {
-    "type": "content",
-    "expiration_time": "inf",
+    "type": "OT",
     "signature_exclusive": false,
     "purchased_content": [
       {

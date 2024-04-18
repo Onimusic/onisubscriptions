@@ -6,7 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from subscription.models import UserProfile
+from subscription.models import UserProfile, SystemUser, Customer
 
 
 class ModifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -64,3 +64,24 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ('user', 'client', 'allowed_actions')
+
+
+class SystemUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemUser
+        fields = [
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+        ]
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = [
+            'id',
+            'name',
+            'owner',
+        ]

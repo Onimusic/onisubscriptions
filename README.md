@@ -62,6 +62,16 @@ de reset de senha, que será enviado no email de convite. O usuário deverá cli
 e assim, ativar sua conta. O perfil será criado para o cliente que o usuário da requisição está acessando no momento da
 requisição.
 
+## Regras de Negócio
+### SRN-001
+No JSON de conteúdos pagos deve estar previsto os conteúdos e cotas disponíveis para o plano free, sob a chave "free".
+
+### SRN-002
+No momento de cadastro, o cliente dever ser atribuído automaticamente ao plano free.
+
+### SRN-003
+Ao vencer o prazo de uma assinatura, o cliente deve ser automaticamente rebaixado para o plano free.
+
 ## Os Modelos
 Em primeiro lugar, é importante mencionar que todos os modelos que herdarem de BaseModel estarão sujeitos ao `Soft Delete`.
 Na prática, isso significa que ao invocar o método delete() desses objetos, eles não serão propriamente deletados do banco
