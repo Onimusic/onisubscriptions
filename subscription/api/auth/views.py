@@ -4,17 +4,19 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage
 from django.db import transaction
+from django.utils import timezone
 from onipkg_contrib.log_helper import log_error, log_tests
 from rest_framework import generics
 from rest_framework.views import APIView
 from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .serializers import ModifiedTokenObtainPairSerializer, ModifiedTokenRefreshSerializer, ProfileSerializer
+from .serializers import ModifiedTokenObtainPairSerializer, ModifiedTokenRefreshSerializer, ProfileSerializer, \
+    SystemUserSerializer, CustomerSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenViewBase, TokenObtainPairView
 
-from ...models import SystemUser, UserProfile, Customer
+from ...models import SystemUser, UserProfile, Customer, PaidContent
 from ...utils.api_helpers import get_default_200_response_for_rest_api, get_default_400_response_for_rest_api, \
     get_default_404_response_for_rest_api, get_default_403_response_for_rest_api, get_profile_from_request, \
     get_custom_action_not_allowed_http_code_and_message
@@ -116,6 +118,8 @@ class CompleteSignupView(APIView):
                 - São necessários o user (owner) e o nome
         2o passo: Criar perfil.
             - São necessários o objeto usuário e o objeto cliente.
+        3o passo: Atribuir o plano free ao Cliente criado.
+            - São necessários o objeto cliente e a definição plano free no json de assinaturas.
 
         Args:
             data: dados necessários para a criacao dos objetos
@@ -124,12 +128,13 @@ class CompleteSignupView(APIView):
         Returns:
             UserProfile e Customer criados
         """
-        manager = Customer.new_customer(
+        customer = Customer.new_customer(
             {'name': data.get('client_name'), 'owner': user})
         profile = UserProfile.new_profile(
-            {'user': user, 'client_id':manager.id}
+            {'user': user, 'client_id': customer.id}
         )
-        return profile, manager
+        PaidContent.register_purchase('free', customer)
+        return profile, customer
 
     def post(self, request):
         data = request.POST.copy()
@@ -252,7 +257,8 @@ class ProfileListCreate(CustomListCreateFilterClass):
             response_msg = _(
                 'O usuário informado ainda não existe. Um convite foi enviado para o endereço de email informado.')
 
-        UserProfile.new_profile({'user': user, 'client': profile.client, 'allowed_actions': data.get('allowed_actions')})
+        UserProfile.new_profile(
+            {'user': user, 'client': profile.client, 'allowed_actions': data.get('allowed_actions')})
         return get_default_200_response_for_rest_api({'msg': response_msg, 'id': profile.id})
 
 

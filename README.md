@@ -64,7 +64,7 @@ requisição.
 
 ## Regras de Negócio
 ### SRN-001
-No JSON de conteúdos pagos deve estar previsto os conteúdos e cotas disponíveis para o plano free.
+No JSON de conteúdos pagos deve estar previsto os conteúdos e cotas disponíveis para o plano free, sob a chave "free".
 
 ### SRN-002
 No momento de cadastro, o cliente dever ser atribuído automaticamente ao plano free.
