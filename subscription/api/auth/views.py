@@ -18,7 +18,8 @@ from ...models import SystemUser, UserProfile, Customer
 from ...utils.api_helpers import get_default_200_response_for_rest_api, get_default_400_response_for_rest_api, \
     get_default_404_response_for_rest_api, get_default_403_response_for_rest_api, get_profile_from_request, \
     get_custom_action_not_allowed_http_code_and_message
-from ...utils.base_viewsets import CustomListCreateFilterClass, CustomRetrieveUpdateDestroyFilterClass
+from ...utils.base_viewsets import CustomListCreateFilterClass, CustomRetrieveUpdateDestroyFilterClass, \
+    CustomListFilterClass, CustomRetrieveFilterClass, CustomRetrieveUpdateFilterClass
 
 
 class ModifiedObtainTokenPairView(TokenObtainPairView):
@@ -262,4 +263,28 @@ class ProfileRetrieveUpdateDestroy(CustomRetrieveUpdateDestroyFilterClass):
     """
     queryset = UserProfile.objects.all()
     serializer_class = ProfileSerializer
+    related_module = 'auth'
+
+
+class UserList(CustomListFilterClass):
+    queryset = SystemUser.objects.all()
+    serializer_class = SystemUserSerializer
+    related_module = 'auth'
+
+
+class UserRetrieve(CustomRetrieveFilterClass):
+    queryset = SystemUser.objects.all()
+    serializer_class = SystemUserSerializer
+    related_module = 'auth'
+
+
+class CustomerList(CustomListFilterClass):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    related_module = 'auth'
+
+
+class CustomerRetrieveUpdate(CustomRetrieveUpdateFilterClass):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
     related_module = 'auth'

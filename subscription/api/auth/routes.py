@@ -2,7 +2,8 @@ from django.conf.urls import url
 from django.urls import path, include
 
 from .views import RegisterView, ModifiedTokenRefreshView, ChangePasswordView, ModifiedObtainTokenPairView, \
-    UserRegistrationValidator, CompleteSignupView
+    UserRegistrationValidator, CompleteSignupView, GetProfileView, ProfileListCreate, ProfileRetrieveUpdateDestroy, \
+    UserList, UserRetrieve, CustomerList, CustomerRetrieveUpdate
 
 router = [
     path('login/', ModifiedObtainTokenPairView.as_view(), name='token_obtain_pair'),
