@@ -14,6 +14,8 @@ Adicione a linha `AUTH_USER_MODEL = 'subscription.SystemUser'` também ao arquiv
 
 Execute o comando `python manage.py makemigrations` para criar as tabelas necessárias.
 
+Crie um subdiretório chamado `subscription` dentro do seu BASE_DIR, e coloque dentro dele um arquivo chamado `plans.json`.
+
 Com o migrate, você terá criado as tabelas de usuário (SystemUser), perfil (UserProfile), cliente (Customer) e assinatura (PaidContent).
 
 Para ter acesso aos endpoints de cadastro e login, adicione o path a seguir no `urlpatterns` do arquivo `urls.py` base do seu projeto:
@@ -38,9 +40,15 @@ Isso vai permitir que noos usuários sejam convidados pelo administrador do clie
 
 ### Escrevendo o JSON
 Siga as instruções abaixo para escrever o JSON de planos da forma correta:
+- O arquivo deve se chamar `plans.json` e estar dentro de um subdiretório chamado `subscription` no BASE_DIR do seu projeto.
 - Para o tempo de duração do produto, coloque a validade em número de dias. Se não tiver data de vencimento (compra de 
-créditos por exemplo), coloque a string 'inf'.
-- 
+créditos por exemplo), não informe esse atributo.
+- Todo produto deve informar um tipo, que pode ser 'SIG' (para assinaturas) ou 'OT' (para compras pontuais).
+- Todo produto deve informar o valor da compra, em float.
+- Toda assinatura deve informar se é exclusiva através do booleano `signature_exclusive`.
+- Todo produto deve informar, em um array, os conteúdos que são disponibilizados com a sua compra.
+- Todo produto deve estar sob uma chave que é o id do produto cadastrado no Stripe, com a exceção do plano free.
+- O plano free deve estar sob a chave 'free'.
 
 ### Cadastro de usuários
 O cadastro de usuários é feito em duas etapas separadas: a criação do usuário e a criação do cliente/perfil.
