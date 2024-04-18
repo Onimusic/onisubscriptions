@@ -348,9 +348,7 @@ class UserProfile(BaseModel):
         Returns:
             True se o usuário puder gastar os créditos desejados
         """
-        if not self.client:
-            return False
-        return self.client.has_quota(price)
+        return False if not self.client else self.client.has_quota(price)
 
     def spend_credits(self, price) -> None:
         """

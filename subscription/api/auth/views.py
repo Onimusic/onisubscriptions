@@ -60,8 +60,7 @@ class RegisterView(APIView):
         Returns:
             Objeto CustomUser criado
         """
-        user = SystemUser.new_user(data)
-        return user
+        return SystemUser.new_user(data)
 
     @staticmethod
     def send_welcome_mail(recipient_email: str, recipient_name: str) -> None:
