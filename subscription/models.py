@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from django.db import models
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as t
 from django.contrib.auth.models import AbstractUser, Permission
@@ -158,14 +158,24 @@ class Customer(BaseModel):
         """
         Retorna a assinatura ativa do cliente
         """
-        active_signatures = self.paidcontent_set.filter(type=PaidContent.Types.SIGNATURE,
-                                                        expiration_date__gte=timezone.localtime(timezone.now()))
+        active_signatures = self.paidcontent_set.filter(
+            Q(Q(expiration_date__gte=timezone.localtime(timezone.now())) | Q(expiration_date__isnull=True)) & Q(
+                type=PaidContent.Types.SIGNATURE))
         if len(active_signatures) > 1:
             if active_signatures.filter(is_exclusive=True).count() > 1:
                 raise Exception('Cliente possui mais de uma assinatura exclusiva ativa')
         elif len(active_signatures) == 0:
             # Se o cara nao tiver uma assinatura ativa, coloca ele no plano free automaticamente
-            PaidContent.register_purchase('free', self)
+            free_signature = PaidContent(
+                customer=self,
+                start_date=timezone.localtime(timezone.now()),
+                value=0,
+                is_exclusive=True,
+                type=PaidContent.Types.SIGNATURE,
+                stripe_id='free',
+            )
+            free_signature.save()
+            return free_signature
         return active_signatures[0]
 
     @property
@@ -218,9 +228,10 @@ class PaidContent(BaseModel):
         Carrega os produtos pagáveis do arquivo json e retorna em formato de dicionário
         """
         import json
+        import os
         from django.conf import settings
         # carrega o arquivo de planos
-        with open(settings.BASE_DIR / 'subscription/plans.json', 'r') as f:
+        with open(os.path.join(settings.BASE_DIR, 'subscription/plans.json'), 'r') as f:
             plans = json.load(f)
         return plans
 
@@ -235,7 +246,7 @@ class PaidContent(BaseModel):
         return plan
 
     @classmethod
-    def register_purchase(cls, stripe_id: str, customer: 'Customer') -> None:
+    def register_purchase(cls, stripe_id: str, customer: 'Customer') -> 'PaidContent':
         """ Preenche os dados de uma assinatura com base nos planos definidos no arquivo json.
 
         Args:
@@ -261,9 +272,16 @@ class PaidContent(BaseModel):
 
         purchase.type = plan['type']
         purchase.is_exclusive = plan['signature_exclusive']
+        if purchase.is_exclusive and purchase.type == cls.Types.SIGNATURE:
+            active_signature = customer.get_active_signature()
+            if active_signature.is_exclusive:
+                # se a assinatura for exclusiva, cancela todas as outras assinaturas do cliente
+                active_signature.expiration_date = timezone.localtime(timezone.now())
+                active_signature.save()
 
         # salva a assinatura
         purchase.save()
+        return purchase
 
     def has_expired(self) -> bool:
         """Verifica se a assinatura expirou.
