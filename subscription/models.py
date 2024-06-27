@@ -381,3 +381,15 @@ class UserProfile(BaseModel):
         if not self.client:
             return
         self.client.use_quota(price)
+
+
+class PricedContent(models.Model):
+    """
+    Mixin para objetos pagos
+    """
+    price_real = models.DecimalField(t('Preço (R$)'), max_digits=10, decimal_places=2, default=0)
+    price_dollar = models.DecimalField(t('Preço (US$)'), max_digits=10, decimal_places=2, default=0)
+    stripe_product_id = models.CharField(t('ID do Produto no Stripe'), max_length=255, blank=True, null=True)
+
+    class Meta:
+        abstract = True
